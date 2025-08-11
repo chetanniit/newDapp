@@ -40,6 +40,43 @@ const detectWalletEnvironment = () => {
   };
 };
 
+// Wait for Trust Wallet injection with timeout
+const waitForTrustWalletInjection = (maxWaitTime = 5000) => {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    
+    const checkForInjection = () => {
+      const currentTime = Date.now();
+      
+      // Check for Trust Wallet's TronWeb injection
+      if (window.tronWeb && window.tronWeb.defaultAddress) {
+        console.log('Trust Wallet TronWeb detected after', currentTime - startTime, 'ms');
+        resolve(true);
+        return;
+      }
+      
+      // Check for Trust Wallet's Tron provider
+      if (window.trustwallet && window.trustwallet.tron) {
+        console.log('Trust Wallet Tron provider detected after', currentTime - startTime, 'ms');
+        resolve(true);
+        return;
+      }
+      
+      // Timeout reached
+      if (currentTime - startTime >= maxWaitTime) {
+        console.log('Trust Wallet injection timeout after', maxWaitTime, 'ms');
+        resolve(false);
+        return;
+      }
+      
+      // Continue checking
+      setTimeout(checkForInjection, 100);
+    };
+    
+    checkForInjection();
+  });
+};
+
 // Enhanced TronWeb initialization
 const initializeTronWeb = async () => {
   const env = detectWalletEnvironment();
@@ -48,10 +85,12 @@ const initializeTronWeb = async () => {
   
   // Trust Wallet mobile app detection (highest priority for mobile)
   if (env.isMobile && env.isTrustWallet) {
-    console.log('Trust Wallet mobile detected');
+    console.log('Trust Wallet mobile detected, waiting for injection...');
     
-    // Trust Wallet injects TronWeb directly
-    if (window.tronWeb && window.tronWeb.defaultAddress) {
+    // Wait for Trust Wallet to inject TronWeb
+    const injected = await waitForTrustWalletInjection(5000);
+    
+    if (injected && window.tronWeb && window.tronWeb.defaultAddress) {
       console.log('Using Trust Wallet injected TronWeb');
       return { 
         tronWeb: window.tronWeb, 
@@ -60,16 +99,29 @@ const initializeTronWeb = async () => {
       };
     }
     
-    // Wait a bit for Trust Wallet to inject TronWeb
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (window.tronWeb && window.tronWeb.defaultAddress) {
-      console.log('Using Trust Wallet injected TronWeb (after wait)');
-      return { 
-        tronWeb: window.tronWeb, 
-        type: 'trustwallet',
-        needsManualAddress: false 
-      };
+    // If TronWeb injection failed, try Trust Wallet's Tron provider
+    if (window.trustwallet && window.trustwallet.tron) {
+      try {
+        const address = await window.trustwallet.tron.getAddress();
+        if (address) {
+          const TronWeb = (await import('tronweb')).default;
+          const tronWeb = new TronWeb({
+            fullHost: TRON_CONFIG[CURRENT_NETWORK].fullHost,
+            privateKey: false
+          });
+          tronWeb.setAddress(address);
+          
+          console.log('Using Trust Wallet Tron provider with address:', address);
+          return { 
+            tronWeb, 
+            type: 'trustwallet',
+            address,
+            needsManualAddress: false 
+          };
+        }
+      } catch (error) {
+        console.error('Trust Wallet Tron provider error:', error);
+      }
     }
   }
   

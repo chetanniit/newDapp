@@ -796,3 +796,142 @@
 .testnet-info a:hover {
   text-decoration: underline;
 }
+
+/* Connection Selector Styles */
+.connection-selector {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.connection-tabs {
+  display: flex;
+  margin-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tab-button {
+  flex: 1;
+  padding: 16px 24px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tab-button.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-bottom-color: #4ecdc4;
+  box-shadow: inset 0 -3px 0 #4ecdc4;
+}
+
+.connection-content {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0 0 12px 12px;
+  padding: 0;
+  min-height: 400px;
+}
+
+.connection-option {
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.option-info {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.option-info h3 {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  color: white;
+}
+
+.option-info p {
+  margin: 0 0 16px 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.features {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.feature {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .connection-tabs {
+    flex-direction: column;
+    border-radius: 12px;
+  }
+  
+  .tab-button {
+    border-bottom: none;
+    border-right: 3px solid transparent;
+  }
+  
+  .tab-button.active {
+    border-bottom: none;
+    border-right-color: #4ecdc4;
+    box-shadow: inset -3px 0 0 #4ecdc4;
+  }
+  
+  .connection-content {
+    border-radius: 12px;
+    margin-top: 16px;
+  }
+  
+  .features {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .feature {
+    width: fit-content;
+  }
+}
+
+/* Override wallet component backgrounds to fit new design */
+.wallet-connect-container,
+.approve-usdt-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.wallet-connect-container > div,
+.approve-usdt-container > div {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #333 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}

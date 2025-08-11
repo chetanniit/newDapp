@@ -1,43 +1,53 @@
 # Tron USDT DApp
 
-A React.js decentralized application (DApp) for approving USDT transactions on the Tron blockchain. This DApp allows users to connect their TronLink wallet, check their USDT balance, and approve USDT spending for specific addresses.
+A React.js decentralized application (DApp) for approving USDT transactions on the Tron blockchain. This DApp uses **WalletConnect v2** for universal wallet connectivity, allowing users to connect their favorite wallets, check USDT balances, and approve USDT spending for specific addresses.
 
 ## Features
 
-- 🔗 **Wallet Connection**: Connect with TronLink wallet
+- 🔗 **Universal Wallet Connection**: Connect with 300+ wallets via WalletConnect v2
 - 💰 **Balance Display**: View your USDT (TRC20) balance
 - ✅ **USDT Approval**: Approve USDT spending for specific addresses
 - 🔍 **Allowance Tracking**: Check current allowances for spender addresses
 - 🌟 **Modern UI**: Beautiful gradient design with responsive layout
-- 🔒 **Security**: Transaction signing with user's wallet
+- 🔒 **Enhanced Security**: Transaction signing with WalletConnect v2 protocol
+- 📱 **Cross-Platform**: Works on mobile and desktop seamlessly
+
+## Supported Wallets
+
+### Mobile Wallets
+- ✅ **Trust Wallet** - Full support via WalletConnect
+- ✅ **MetaMask Mobile** - Complete functionality
+- ✅ **Coinbase Wallet** - Native support
+- ✅ **Rainbow Wallet** - Full compatibility
+- ✅ **1inch Wallet** - Supported
+- ✅ **300+ other wallets** - Via WalletConnect protocol
+
+### Desktop Wallets
+- ✅ **TronLink Extension** - Full native support
+- ✅ **MetaMask Extension** - Complete functionality
+- ✅ **Any WalletConnect compatible wallet**
 
 ## Prerequisites
 
 Before running this DApp, make sure you have:
 
-1. **Wallet Support**:
-   - **TronLink Wallet Extension** (Chrome/Firefox/Edge) - Full native support
-   - **Trust Wallet Mobile App** - Supported via DApp browser
+1. **Any WalletConnect v2 compatible wallet** (Trust Wallet, MetaMask, etc.)
 2. **Node.js** (version 16 or higher)
 3. **npm** or **yarn** package manager
+4. **WalletConnect Project ID** (free from [WalletConnect Cloud](https://cloud.walletconnect.com/))
 
-## Wallet Compatibility
+## Quick Setup
 
-### TronLink (Recommended)
-- ✅ Full native support
-- ✅ Automatic transaction signing
-- ✅ Real-time balance updates
-- ✅ Seamless user experience
+### 1. WalletConnect Configuration
+1. Visit [WalletConnect Cloud](https://cloud.walletconnect.com/)
+2. Create a free account and new project
+3. Copy your Project ID
+4. Update `src/config/walletconnect.js`:
+   ```javascript
+   const PROJECT_ID = 'your-project-id-here'; // Replace with your ID
+   ```
 
-### Trust Wallet
-- ✅ Supported via DApp browser
-- ⚠️ Manual Tron address entry required
-- ⚠️ Transaction signing through Trust Wallet interface
-- ⚠️ Limited automatic updates
-
-**Note for Trust Wallet users**: Since Trust Wallet doesn't inject TronWeb directly into the DApp browser for Tron network, you'll need to manually enter your Tron address when connecting.
-
-## Installation
+### 2. Installation
 
 1. Clone or download this repository
 2. Navigate to the project directory

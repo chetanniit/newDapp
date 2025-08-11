@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@walletconnect/modal": "^2.7.0",
+    "@walletconnect/sign-client": "^2.21.8",
+    "@walletconnect/types": "^2.21.8",
+    "@walletconnect/utils": "^2.21.8",
     "buffer": "^6.0.3",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
