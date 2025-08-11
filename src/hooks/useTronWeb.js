@@ -4,15 +4,39 @@ import { TRON_CONFIG, CURRENT_NETWORK } from '../config/constants.js';
 // Detect wallet type and capabilities
 const detectWalletEnvironment = () => {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const isTrustWallet = window.trustwallet || (window.ethereum && window.ethereum.isTrust);
-  const isTronLink = window.tronWeb || window.tronLink;
+  
+  // Enhanced Trust Wallet detection
+  const isTrustWallet = !!(
+    window.trustwallet || 
+    (window.ethereum && window.ethereum.isTrust) ||
+    (window.ethereum && window.ethereum.isTrustWallet) ||
+    (typeof window !== 'undefined' && window.trustWallet) ||
+    (navigator.userAgent && navigator.userAgent.includes('Trust'))
+  );
+  
+  // Enhanced TronLink detection
+  const isTronLink = !!(window.tronWeb || window.tronLink);
+  
+  // Check for injected TronWeb (Trust Wallet also injects this)
+  const hasInjectedTronWeb = !!(window.tronWeb && window.tronWeb.defaultAddress);
+  
+  console.log('Wallet Detection:', {
+    isMobile,
+    isTrustWallet,
+    isTronLink,
+    hasInjectedTronWeb,
+    userAgent: navigator.userAgent,
+    windowTronWeb: !!window.tronWeb,
+    windowEthereum: !!window.ethereum
+  });
   
   return {
     isMobile,
     isTrustWallet,
     isTronLink,
+    hasInjectedTronWeb,
     isDesktop: !isMobile,
-    hasInjectedWallet: !!(isTronLink || isTrustWallet)
+    hasInjectedWallet: !!(isTronLink || isTrustWallet || hasInjectedTronWeb)
   };
 };
 
@@ -20,8 +44,38 @@ const detectWalletEnvironment = () => {
 const initializeTronWeb = async () => {
   const env = detectWalletEnvironment();
   
-  // Try TronLink first (most reliable)
+  console.log('Initializing TronWeb with environment:', env);
+  
+  // Trust Wallet mobile app detection (highest priority for mobile)
+  if (env.isMobile && env.isTrustWallet) {
+    console.log('Trust Wallet mobile detected');
+    
+    // Trust Wallet injects TronWeb directly
+    if (window.tronWeb && window.tronWeb.defaultAddress) {
+      console.log('Using Trust Wallet injected TronWeb');
+      return { 
+        tronWeb: window.tronWeb, 
+        type: 'trustwallet',
+        needsManualAddress: false 
+      };
+    }
+    
+    // Wait a bit for Trust Wallet to inject TronWeb
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    if (window.tronWeb && window.tronWeb.defaultAddress) {
+      console.log('Using Trust Wallet injected TronWeb (after wait)');
+      return { 
+        tronWeb: window.tronWeb, 
+        type: 'trustwallet',
+        needsManualAddress: false 
+      };
+    }
+  }
+  
+  // TronLink detection (for desktop or if Trust Wallet not detected)
   if (window.tronWeb && window.tronWeb.ready) {
+    console.log('Using TronLink ready TronWeb');
     return { 
       tronWeb: window.tronWeb, 
       type: 'tronlink',
@@ -30,10 +84,25 @@ const initializeTronWeb = async () => {
   }
   
   if (window.tronLink) {
-    await window.tronLink.request({ method: 'tron_requestAccounts' });
+    console.log('Using TronLink extension');
+    try {
+      await window.tronLink.request({ method: 'tron_requestAccounts' });
+      return { 
+        tronWeb: window.tronLink.tronWeb, 
+        type: 'tronlink',
+        needsManualAddress: false 
+      };
+    } catch (error) {
+      console.error('TronLink connection error:', error);
+    }
+  }
+  
+  // Generic mobile wallet with injected TronWeb
+  if (env.isMobile && window.tronWeb) {
+    console.log('Using generic mobile wallet TronWeb');
     return { 
-      tronWeb: window.tronLink.tronWeb, 
-      type: 'tronlink',
+      tronWeb: window.tronWeb, 
+      type: env.isTrustWallet ? 'trustwallet' : 'mobile_wallet',
       needsManualAddress: false 
     };
   }
