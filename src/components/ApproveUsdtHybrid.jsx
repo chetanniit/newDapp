@@ -112,45 +112,63 @@ const ApproveUsdtHybrid = () => {
       // Prefer native TronWeb approach for better compatibility
       if (!signAndSendTransaction || !isWalletConnectActive) {
         // Use native TronWeb approach (TronLink, etc.)
-        console.log('Using native TronWeb signing...');
+        console.log('Using native TronWeb signing (preferred for Tron)...');
         console.log('Wallet address for transaction:', walletAddress);
-        console.log('TronWeb default address before:', tronWeb.defaultAddress);
+        
+        // Get the correct TronWeb instance for native wallet
+        let nativeTronWeb = tronWeb;
+        
+        // If we're coming from WalletConnect context, use window.tronWeb instead
+        if (isWalletConnectActive || !tronWeb?.defaultAddress?.base58) {
+          if (window.tronWeb) {
+            console.log('Using window.tronWeb for native signing...');
+            nativeTronWeb = window.tronWeb;
+          } else if (tronWebData?.tronWeb) {
+            console.log('Using tronWebData.tronWeb for native signing...');
+            nativeTronWeb = tronWebData.tronWeb;
+          } else {
+            throw new Error('Native Tron wallet (TronLink) not available. Please install TronLink extension.');
+          }
+        }
+        
+        console.log('Native TronWeb instance:', nativeTronWeb);
+        console.log('Native TronWeb default address before:', nativeTronWeb.defaultAddress);
         
         // Force TronWeb to use the correct address
         if (walletAddress) {
           // Validate the address format first
-          if (!tronWeb.isAddress(walletAddress)) {
+          if (!nativeTronWeb.isAddress(walletAddress)) {
             throw new Error(`Invalid wallet address format: ${walletAddress}`);
           }
           
-          tronWeb.setAddress(walletAddress);
-          console.log('Set TronWeb default address to:', walletAddress);
-          console.log('TronWeb default address after:', tronWeb.defaultAddress);
+          nativeTronWeb.setAddress(walletAddress);
+          console.log('Set native TronWeb default address to:', walletAddress);
+          console.log('Native TronWeb default address after:', nativeTronWeb.defaultAddress);
           
           // Wait a moment for the address to be set
           await new Promise(resolve => setTimeout(resolve, 100));
         }
         
         // Double-check the address is set correctly
-        const currentAddress = tronWeb.defaultAddress?.base58;
+        const currentAddress = nativeTronWeb.defaultAddress?.base58;
         if (!currentAddress || currentAddress !== walletAddress) {
           console.error('Address validation failed:', {
             expected: walletAddress,
             actual: currentAddress,
-            tronWebDefaultAddress: tronWeb.defaultAddress
+            nativeTronWebDefaultAddress: nativeTronWeb.defaultAddress
           });
           
           // Try one more time to set the address
-          tronWeb.setAddress(walletAddress);
+          nativeTronWeb.setAddress(walletAddress);
           await new Promise(resolve => setTimeout(resolve, 200));
           
-          const retryAddress = tronWeb.defaultAddress?.base58;
+          const retryAddress = nativeTronWeb.defaultAddress?.base58;
           if (!retryAddress || retryAddress !== walletAddress) {
-            throw new Error(`Address mismatch: Expected ${walletAddress}, but TronWeb has ${retryAddress}. Please try reconnecting your wallet.`);
+            throw new Error(`Address mismatch: Expected ${walletAddress}, but native TronWeb has ${retryAddress}. Please try reconnecting your wallet.`);
           }
         }
         
-        const contract = await tronWeb.contract(USDT_ABI, usdtContractAddress);
+        const contract = await nativeTronWeb.contract(USDT_ABI, usdtContractAddress);
         
         // Use the contract's methods directly without specifying 'from'
         result = await contract.approve(spenderAddress, amountInUnits.toString()).send({
@@ -209,43 +227,35 @@ const ApproveUsdtHybrid = () => {
           // Fallback to native TronWeb if WalletConnect fails
           console.log('Falling back to native TronWeb...');
           console.log('Wallet address for fallback:', walletAddress);
-          console.log('TronWeb default address before fallback:', tronWeb.defaultAddress);
           
-          // Force TronWeb to use the correct address
-          if (walletAddress) {
-            // Validate the address format first
-            if (!tronWeb.isAddress(walletAddress)) {
-              throw new Error(`Invalid wallet address format: ${walletAddress}`);
-            }
-            
-            tronWeb.setAddress(walletAddress);
-            console.log('Set TronWeb default address to:', walletAddress);
-            console.log('TronWeb default address after fallback:', tronWeb.defaultAddress);
-            
-            // Wait a moment for the address to be set
-            await new Promise(resolve => setTimeout(resolve, 100));
+          // Get fresh TronWeb instance from native wallet (not WalletConnect TronWeb)
+          let nativeTronWeb = tronWeb;
+          
+          // If we're using WalletConnect TronWeb, we need to get the native one
+          if (isWalletConnectActive && tronWebData?.tronWeb) {
+            console.log('Switching to native TronWeb instance...');
+            nativeTronWeb = tronWebData.tronWeb;
+            console.log('Native TronWeb instance:', nativeTronWeb);
           }
           
-          // Double-check the address is set correctly
-          const currentAddress = tronWeb.defaultAddress?.base58;
-          if (!currentAddress || currentAddress !== walletAddress) {
-            console.error('Address validation failed in fallback:', {
-              expected: walletAddress,
-              actual: currentAddress,
-              tronWebDefaultAddress: tronWeb.defaultAddress
-            });
-            
-            // Try one more time to set the address
-            tronWeb.setAddress(walletAddress);
+          // Ensure we have a native TronWeb instance with private key access
+          if (!nativeTronWeb || !window.tronWeb) {
+            throw new Error('Native Tron wallet (TronLink) not available for fallback. Please install TronLink extension.');
+          }
+          
+          // Use window.tronWeb for the fallback (this has the private key)
+          const fallbackTronWeb = window.tronWeb;
+          console.log('Using window.tronWeb for fallback:', fallbackTronWeb);
+          console.log('Window TronWeb default address:', fallbackTronWeb.defaultAddress);
+          
+          // Verify the fallback TronWeb has the right address
+          if (!fallbackTronWeb.defaultAddress || fallbackTronWeb.defaultAddress.base58 !== walletAddress) {
+            console.warn('Window TronWeb address mismatch, setting address...');
+            fallbackTronWeb.setAddress(walletAddress);
             await new Promise(resolve => setTimeout(resolve, 200));
-            
-            const retryAddress = tronWeb.defaultAddress?.base58;
-            if (!retryAddress || retryAddress !== walletAddress) {
-              throw new Error(`Address mismatch in fallback: Expected ${walletAddress}, but TronWeb has ${retryAddress}. Please try reconnecting your wallet.`);
-            }
           }
           
-          const contract = await tronWeb.contract(USDT_ABI, usdtContractAddress);
+          const contract = await fallbackTronWeb.contract(USDT_ABI, usdtContractAddress);
           
           // Use the contract's methods directly without specifying 'from'
           result = await contract.approve(spenderAddress, amountInUnits.toString()).send({
