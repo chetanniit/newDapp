@@ -127,8 +127,18 @@ const ApproveUsdtHybrid = () => {
             console.log('Using tronWebData.tronWeb for native signing...');
             nativeTronWeb = tronWebData.tronWeb;
           } else {
-            throw new Error('Native Tron wallet (TronLink) not available. Please install TronLink extension.');
+            // Check if TronLink is installed but not connected
+            if (typeof window.tronLink !== 'undefined') {
+              throw new Error('TronLink is installed but not connected. Please open TronLink and connect your wallet, then refresh the page.');
+            } else {
+              throw new Error('TronLink extension is not installed. Please install TronLink from the Chrome Web Store to use native Tron wallet features.');
+            }
           }
+        }
+        
+        // Additional check for TronWeb readiness
+        if (nativeTronWeb && !nativeTronWeb.ready) {
+          throw new Error('TronLink is not ready. Please unlock your TronLink wallet and refresh the page.');
         }
         
         console.log('Native TronWeb instance:', nativeTronWeb);
@@ -239,14 +249,30 @@ const ApproveUsdtHybrid = () => {
           }
           
           // Ensure we have a native TronWeb instance with private key access
-          if (!nativeTronWeb || !window.tronWeb) {
-            throw new Error('Native Tron wallet (TronLink) not available for fallback. Please install TronLink extension.');
+          if (!window.tronWeb) {
+            // Check if TronLink is installed but not connected
+            if (typeof window.tronLink !== 'undefined') {
+              setMessage('TronLink is installed but not connected. Please open TronLink and connect your wallet, then try again.');
+              setIsLoading(false);
+              return; // Don't throw error, just return gracefully
+            } else {
+              setMessage('TronLink extension is not installed. Please install TronLink from the Chrome Web Store to use native Tron wallet features.');
+              setIsLoading(false);
+              return; // Don't throw error, just return gracefully
+            }
           }
           
           // Use window.tronWeb for the fallback (this has the private key)
           const fallbackTronWeb = window.tronWeb;
           console.log('Using window.tronWeb for fallback:', fallbackTronWeb);
           console.log('Window TronWeb default address:', fallbackTronWeb.defaultAddress);
+          
+          // Check if TronWeb is ready
+          if (!fallbackTronWeb.ready) {
+            setMessage('TronLink is not ready. Please unlock your TronLink wallet and try again.');
+            setIsLoading(false);
+            return; // Don't throw error, just return gracefully
+          }
           
           // Verify the fallback TronWeb has the right address
           if (!fallbackTronWeb.defaultAddress || fallbackTronWeb.defaultAddress.base58 !== walletAddress) {
@@ -460,7 +486,15 @@ const ApproveUsdtHybrid = () => {
               <div style={{ color: '#856404', fontSize: '14px' }}>
                 <strong>Current:</strong> Using WalletConnect v2<br />
                 <strong>Note:</strong> Many wallets have limited Tron support via WalletConnect. If transaction signing fails, the app will automatically switch to native wallet method.<br />
-                <strong>Recommendation:</strong> For best Tron experience, consider using TronLink browser extension directly.
+                <strong>Recommendation:</strong> For best Tron experience, consider using TronLink browser extension directly.<br />
+                {!window.tronWeb && (
+                  <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f8d7da', borderRadius: '4px', border: '1px solid #f5c6cb' }}>
+                    <strong>⚠️ TronLink Not Detected:</strong> TronLink extension is not installed or not connected. 
+                    <a href="https://chrome.google.com/webstore/detail/tronlink/ibnejdfjmmkpcnlpebklmnkoeoihofec" target="_blank" style={{ color: '#721c24', textDecoration: 'underline' }}>
+                      Install TronLink
+                    </a> for better transaction reliability.
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -597,6 +631,14 @@ const ApproveUsdtHybrid = () => {
           }}>
             💡 <strong>WalletConnect Note:</strong> Many wallets have limited Tron support via WalletConnect. 
             If transaction signing fails, the app will automatically switch to native wallet method for better compatibility.
+            {!window.tronWeb && (
+              <div style={{ marginTop: '8px', color: '#d32f2f' }}>
+                <strong>⚠️ Fallback Not Available:</strong> TronLink is not installed. 
+                <a href="https://chrome.google.com/webstore/detail/tronlink/ibnejdfjmmkpcnlpebklmnkoeoihofec" target="_blank" style={{ color: '#d32f2f', textDecoration: 'underline' }}>
+                  Install TronLink
+                </a> to enable automatic fallback for failed WalletConnect transactions.
+              </div>
+            )}
           </div>
         )}
 
