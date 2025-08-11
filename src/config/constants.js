@@ -5,8 +5,8 @@ export const USDT_CONTRACT_ADDRESSES = {
   shasta: 'TG3XXyExBkPp9nzdajDZsozEu4BkaSJozs' // USDT on Shasta testnet
 };
 
-// Current network setting
-export const CURRENT_NETWORK = 'mainnet'; // Changed to Shasta testnet - more commonly used
+// Current network setting (can be overridden by environment variable)
+export const CURRENT_NETWORK = import.meta.env.VITE_TRON_NETWORK || 'mainnet';
 
 // Get current USDT contract address based on network
 export const USDT_CONTRACT_ADDRESS = USDT_CONTRACT_ADDRESSES[CURRENT_NETWORK];

@@ -199,6 +199,88 @@ npm run preview
 
 This project is open source and available under the MIT License.
 
+## 🌐 Deployment on Netlify
+
+Your DApp is ready for deployment! The build has been successfully created.
+
+### Quick Deploy Options
+
+#### Option 1: Drag & Drop (Fastest)
+
+1. **Locate your build folder**: `d:\TronApp\newDapp\dist`
+2. **Go to Netlify**: Visit [netlify.com](https://netlify.com) and sign up/login
+3. **Drag & Drop**: Simply drag the entire `dist` folder to the Netlify dashboard
+4. **Done!** Your DApp will be live in seconds with a URL like `https://amazing-name-123456.netlify.app`
+
+#### Option 2: Git Deployment (Recommended for updates)
+
+1. **Initialize Git repository**:
+   ```bash
+   cd "d:\TronApp\newDapp"
+   git init
+   git add .
+   git commit -m "Initial commit: Tron USDT DApp"
+   ```
+
+2. **Create GitHub repository**:
+   - Go to [GitHub](https://github.com) and create a new repository
+   - Copy the repository URL
+
+3. **Push to GitHub**:
+   ```bash
+   git branch -M main
+   git remote add origin https://github.com/yourusername/tron-usdt-dapp.git
+   git push -u origin main
+   ```
+
+4. **Connect to Netlify**:
+   - Go to [Netlify](https://netlify.com)
+   - Click "New site from Git"
+   - Choose GitHub and select your repository
+   - Build settings are automatically detected from `netlify.toml`
+   - Click "Deploy site"
+
+#### Option 3: Netlify CLI
+
+1. **Install Netlify CLI**:
+   ```bash
+   npm install -g netlify-cli
+   ```
+
+2. **Deploy**:
+   ```bash
+   cd "d:\TronApp\newDapp"
+   netlify deploy --prod --dir=dist
+   ```
+
+### Build Configuration
+
+The project includes optimized build configuration:
+
+- **Build Output**: `dist/` folder
+- **SPA Routing**: Configured with `_redirects` for client-side routing
+- **Security Headers**: HTTPS, XSS protection, content security
+- **Asset Optimization**: Minified CSS/JS, compressed images
+- **Performance**: Chunked bundles, cache optimization
+
+### Environment Variables (Optional)
+
+For production customization, you can set these in Netlify dashboard:
+
+```
+VITE_TRON_NETWORK=mainnet
+VITE_APP_NAME=My Tron DApp
+VITE_TRONGRID_API_KEY=your_api_key_here
+```
+
+### Post-Deployment Checklist
+
+✅ **Test wallet connection** on mobile and desktop
+✅ **Verify network settings** (mainnet/testnet)
+✅ **Check USDT contract interaction**
+✅ **Test QR code functionality** for mobile wallets
+✅ **Validate responsive design** on different screen sizes
+
 ## Support
 
 If you encounter any issues or have questions, please:
