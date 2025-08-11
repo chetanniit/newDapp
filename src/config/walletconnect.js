@@ -43,32 +43,64 @@ export const TRON_NAMESPACE = {
   }
 };
 
-// Initialize WalletConnect client
+// WalletConnect singleton instance
+let walletConnectInstance = null;
+let initializationPromise = null;
+
+// Initialize WalletConnect client (singleton pattern)
 export const initializeWalletConnect = async () => {
-  try {
-    console.log('Initializing WalletConnect with project ID:', PROJECT_ID);
-    
-    const signClient = await SignClient.init({
-      projectId: WALLETCONNECT_CONFIG.projectId,
-      metadata: WALLETCONNECT_CONFIG.metadata
-    });
-
-    const modal = new WalletConnectModal({
-      projectId: WALLETCONNECT_CONFIG.projectId,
-      themeMode: 'light',
-      themeVariables: {
-        '--wcm-z-index': '1000',
-        '--wcm-accent-color': '#3b82f6',
-        '--wcm-background-color': '#ffffff'
-      }
-    });
-
-    console.log('WalletConnect initialized successfully');
-    return { signClient, modal };
-  } catch (error) {
-    console.error('Failed to initialize WalletConnect:', error);
-    throw error;
+  // If already initialized, return the existing instance
+  if (walletConnectInstance) {
+    console.log('WalletConnect already initialized, returning existing instance');
+    return walletConnectInstance;
   }
+
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    console.log('WalletConnect initialization in progress, waiting...');
+    return initializationPromise;
+  }
+
+  // Start new initialization
+  initializationPromise = (async () => {
+    try {
+      console.log('Initializing WalletConnect with project ID:', PROJECT_ID);
+      
+      const signClient = await SignClient.init({
+        projectId: WALLETCONNECT_CONFIG.projectId,
+        metadata: WALLETCONNECT_CONFIG.metadata
+      });
+
+      const modal = new WalletConnectModal({
+        projectId: WALLETCONNECT_CONFIG.projectId,
+        themeMode: 'light',
+        themeVariables: {
+          '--wcm-z-index': '1000',
+          '--wcm-accent-color': '#3b82f6',
+          '--wcm-background-color': '#ffffff'
+        }
+      });
+
+      walletConnectInstance = { signClient, modal };
+      console.log('WalletConnect initialized successfully');
+      return walletConnectInstance;
+    } catch (error) {
+      console.error('Failed to initialize WalletConnect:', error);
+      // Reset on error so we can try again
+      walletConnectInstance = null;
+      initializationPromise = null;
+      throw error;
+    }
+  })();
+
+  return initializationPromise;
+};
+
+// Function to reset the singleton (useful for testing or reconnection)
+export const resetWalletConnect = () => {
+  console.log('Resetting WalletConnect singleton');
+  walletConnectInstance = null;
+  initializationPromise = null;
 };
 
 // Helper function to get chain ID from network

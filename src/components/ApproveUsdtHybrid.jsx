@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useWalletConnect } from '../hooks/useWalletConnect.js';
-import { useTronWeb } from '../hooks/useTronWeb.js';
+import { useWallet } from '../contexts/WalletContext.jsx';
 import { USDT_CONTRACT_ADDRESSES, TRON_CONFIG, CURRENT_NETWORK, getValidatedUsdtAddress } from '../config/constants.js';
 
 // USDT TRC20 ABI - Essential functions only
@@ -10,6 +9,7 @@ const USDT_ABI = [
     "inputs": [{"name": "_owner", "type": "address"}],
     "name": "balanceOf",
     "outputs": [{"name": "balance", "type": "uint256"}],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -20,6 +20,7 @@ const USDT_ABI = [
     ],
     "name": "approve",
     "outputs": [{"name": "", "type": "bool"}],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -30,36 +31,54 @@ const USDT_ABI = [
     ],
     "name": "allowance",
     "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
     "type": "function"
   }
 ];
 
-const ApproveUsdtHybrid = ({ walletAddress }) => {
-  // Try WalletConnect first, fallback to native TronWeb
-  // Updated with improved contract address validation
-  const walletConnectData = useWalletConnect();
-  const tronWebData = useTronWeb();
-  
-  // Use WalletConnect if available, otherwise use native TronWeb
+const ApproveUsdtHybrid = () => {
+  // Get wallet data from context (prevents multiple hook initializations)
   const {
-    tronWeb,
     isConnected,
-    signAndSendTransaction
-  } = walletConnectData.isConnected ? walletConnectData : {
-    tronWeb: tronWebData.tronWeb,
-    isConnected: tronWebData.isConnected,
-    signAndSendTransaction: null // We'll handle this differently for native TronWeb
-  };
+    address: walletAddress,
+    tronWebInstance: tronWeb,
+    signAndSendTransaction,
+    isWalletConnectActive,
+    isTronWebActive,
+    walletConnect: walletConnectData,
+    tronWeb: tronWebData
+  } = useWallet();
 
   const [approveAmount, setApproveAmount] = useState('100');
   const [spenderAddress, setSpenderAddress] = useState('');
   const [isApproving, setIsApproving] = useState(false);
   const [transactionHash, setTransactionHash] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState(''); // Add message state for user feedback
 
   const handleApprove = async () => {
+    console.log('=== Starting USDT Approval ===');
+    console.log('Wallet Address from context:', walletAddress);
+    console.log('Is Connected:', isConnected);
+    console.log('TronWeb instance:', tronWeb);
+    console.log('TronWeb default address:', tronWeb?.defaultAddress);
+    console.log('WalletConnect active:', isWalletConnectActive);
+    console.log('TronWeb active:', isTronWebActive);
+    console.log('Has signAndSendTransaction:', !!signAndSendTransaction);
+    
     if (!isConnected || !tronWeb) {
       setError('Wallet not connected');
+      return;
+    }
+
+    if (!walletAddress) {
+      console.error('No wallet address found in context. Debug info:', {
+        walletConnectActive: isWalletConnectActive,
+        tronWebActive: isTronWebActive,
+        walletConnectAddress: walletConnectData?.address,
+        tronWebAddress: tronWebData?.address
+      });
+      setError('No wallet address found. Please ensure your wallet is properly connected.');
       return;
     }
 
@@ -70,6 +89,7 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
 
     setIsApproving(true);
     setError('');
+    setMessage(''); // Clear any previous messages
     setTransactionHash('');
 
     try {
@@ -89,39 +109,149 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
 
       let result;
 
-      if (signAndSendTransaction) {
-        // Use WalletConnect approach
-        console.log('Using WalletConnect signing...');
-        
-        // Build the transaction without sending it
-        const transaction = await tronWeb.transactionBuilder.triggerSmartContract(
-          usdtContractAddress,
-          'approve(address,uint256)',
-          {
-            feeLimit: 100000000, // 100 TRX fee limit
-          },
-          [
-            { type: 'address', value: spenderAddress },
-            { type: 'uint256', value: amountInUnits.toString() }
-          ],
-          walletAddress
-        );
-
-        if (!transaction.result || !transaction.result.result) {
-          throw new Error('Failed to build transaction');
-        }
-
-        result = await signAndSendTransaction(transaction.transaction);
-      } else {
+      // Prefer native TronWeb approach for better compatibility
+      if (!signAndSendTransaction || !isWalletConnectActive) {
         // Use native TronWeb approach (TronLink, etc.)
         console.log('Using native TronWeb signing...');
+        console.log('Wallet address for transaction:', walletAddress);
+        console.log('TronWeb default address before:', tronWeb.defaultAddress);
+        
+        // Force TronWeb to use the correct address
+        if (walletAddress) {
+          // Validate the address format first
+          if (!tronWeb.isAddress(walletAddress)) {
+            throw new Error(`Invalid wallet address format: ${walletAddress}`);
+          }
+          
+          tronWeb.setAddress(walletAddress);
+          console.log('Set TronWeb default address to:', walletAddress);
+          console.log('TronWeb default address after:', tronWeb.defaultAddress);
+          
+          // Wait a moment for the address to be set
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Double-check the address is set correctly
+        const currentAddress = tronWeb.defaultAddress?.base58;
+        if (!currentAddress || currentAddress !== walletAddress) {
+          console.error('Address validation failed:', {
+            expected: walletAddress,
+            actual: currentAddress,
+            tronWebDefaultAddress: tronWeb.defaultAddress
+          });
+          
+          // Try one more time to set the address
+          tronWeb.setAddress(walletAddress);
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          const retryAddress = tronWeb.defaultAddress?.base58;
+          if (!retryAddress || retryAddress !== walletAddress) {
+            throw new Error(`Address mismatch: Expected ${walletAddress}, but TronWeb has ${retryAddress}. Please try reconnecting your wallet.`);
+          }
+        }
         
         const contract = await tronWeb.contract(USDT_ABI, usdtContractAddress);
         
+        // Use the contract's methods directly without specifying 'from'
         result = await contract.approve(spenderAddress, amountInUnits.toString()).send({
-          feeLimit: 100000000, // 100 TRX fee limit
-          from: walletAddress
+          feeLimit: 100000000 // 100 TRX fee limit
         });
+      } else {
+        // Try WalletConnect approach with fallback
+        console.log('Attempting WalletConnect signing...');
+        
+        try {
+          // Build the transaction without sending it
+          console.log('Building transaction with params:', {
+            contractAddress: usdtContractAddress,
+            spenderAddress,
+            amount: amountInUnits.toString(),
+            walletAddress
+          });
+          
+          const transaction = await tronWeb.transactionBuilder.triggerSmartContract(
+            usdtContractAddress,
+            'approve(address,uint256)',
+            {
+              feeLimit: 100000000, // 100 TRX fee limit
+            },
+            [
+              { type: 'address', value: spenderAddress },
+              { type: 'uint256', value: amountInUnits.toString() }
+            ],
+            walletAddress
+          );
+
+          console.log('Transaction built:', transaction);
+
+          if (!transaction?.result?.result) {
+            const error = transaction?.result?.message || 'Unknown transaction build error';
+            throw new Error(`Failed to build transaction: ${error}`);
+          }
+
+          console.log('Sending transaction for signing...');
+          result = await signAndSendTransaction(transaction.transaction);
+        } catch (wcError) {
+          const errorMessage = wcError?.message || wcError?.toString() || 'Unknown WalletConnect error';
+          console.warn('WalletConnect signing failed:', errorMessage);
+          console.error('Full error object:', wcError);
+          
+          // Show user-friendly message for WalletConnect failures
+          if (wcError?.isWalletConnectFailure) {
+            setMessage('WalletConnect signing failed. Automatically switching to native wallet method...');
+          } else {
+            setMessage(`WalletConnect error: ${errorMessage}. Switching to native wallet method...`);
+          }
+          
+          // Add delay to show message
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Fallback to native TronWeb if WalletConnect fails
+          console.log('Falling back to native TronWeb...');
+          console.log('Wallet address for fallback:', walletAddress);
+          console.log('TronWeb default address before fallback:', tronWeb.defaultAddress);
+          
+          // Force TronWeb to use the correct address
+          if (walletAddress) {
+            // Validate the address format first
+            if (!tronWeb.isAddress(walletAddress)) {
+              throw new Error(`Invalid wallet address format: ${walletAddress}`);
+            }
+            
+            tronWeb.setAddress(walletAddress);
+            console.log('Set TronWeb default address to:', walletAddress);
+            console.log('TronWeb default address after fallback:', tronWeb.defaultAddress);
+            
+            // Wait a moment for the address to be set
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          // Double-check the address is set correctly
+          const currentAddress = tronWeb.defaultAddress?.base58;
+          if (!currentAddress || currentAddress !== walletAddress) {
+            console.error('Address validation failed in fallback:', {
+              expected: walletAddress,
+              actual: currentAddress,
+              tronWebDefaultAddress: tronWeb.defaultAddress
+            });
+            
+            // Try one more time to set the address
+            tronWeb.setAddress(walletAddress);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const retryAddress = tronWeb.defaultAddress?.base58;
+            if (!retryAddress || retryAddress !== walletAddress) {
+              throw new Error(`Address mismatch in fallback: Expected ${walletAddress}, but TronWeb has ${retryAddress}. Please try reconnecting your wallet.`);
+            }
+          }
+          
+          const contract = await tronWeb.contract(USDT_ABI, usdtContractAddress);
+          
+          // Use the contract's methods directly without specifying 'from'
+          result = await contract.approve(spenderAddress, amountInUnits.toString()).send({
+            feeLimit: 100000000 // 100 TRX fee limit
+          });
+        }
       }
 
       if (result && (result.result === true || result.txid)) {
@@ -143,6 +273,7 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
       setError(error.message || 'Failed to approve USDT');
     } finally {
       setIsApproving(false);
+      // Keep message and error states to show user feedback
     }
   };
 
@@ -159,9 +290,22 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
       console.log('Wallet address:', walletAddress);
       console.log('Spender address:', spenderAddress);
       
+      // Ensure TronWeb has the default address set
+      if (!tronWeb.defaultAddress || !tronWeb.defaultAddress.base58) {
+        if (walletAddress) {
+          tronWeb.setAddress(walletAddress);
+          console.log('Set TronWeb default address to:', walletAddress);
+        } else {
+          throw new Error('No wallet address available for TronWeb');
+        }
+      }
+      
       const contract = await tronWeb.contract(USDT_ABI, usdtContractAddress);
       
-      const allowance = await contract.allowance(walletAddress, spenderAddress).call();
+      const allowance = await contract.allowance(walletAddress, spenderAddress).call({
+        from: walletAddress
+      });
+      
       const allowanceInUsdt = tronWeb.toBigNumber(allowance).dividedBy(1000000);
       
       alert(`Current allowance: ${allowanceInUsdt.toString()} USDT`);
@@ -189,15 +333,20 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
       }
       
       // Validate address format one more time
-      if (!tronWeb.isAddress(usdtContractAddress)) {
-        throw new Error(`Invalid USDT contract address format: ${usdtContractAddress}`);
-      }
       
-      if (!tronWeb.isAddress(walletAddress)) {
-        throw new Error(`Invalid wallet address format: ${walletAddress}`);
-      }
       
       console.log('Creating contract instance...');
+      
+      // Ensure TronWeb has the default address set
+      if (!tronWeb.defaultAddress || !tronWeb.defaultAddress.base58) {
+        if (walletAddress) {
+          tronWeb.setAddress(walletAddress);
+          console.log('Set TronWeb default address to:', walletAddress);
+        } else {
+          throw new Error('No wallet address available for TronWeb');
+        }
+      }
+      
       const contract = await tronWeb.contract(USDT_ABI, usdtContractAddress);
       
       if (!contract) {
@@ -207,7 +356,11 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
       console.log('Contract instance created successfully');
       console.log('Calling balanceOf...');
       
-      const balance = await contract.balanceOf(walletAddress).call();
+      // Call balanceOf with explicit parameters
+      const balance = await contract.balanceOf(walletAddress).call({
+        from: walletAddress
+      });
+      
       const balanceInUsdt = tronWeb.toBigNumber(balance).dividedBy(1000000);
       
       alert(`Your USDT balance: ${balanceInUsdt.toString()} USDT`);
@@ -228,12 +381,39 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
         <div className="not-connected">
           <h3>⚠️ Wallet Not Connected</h3>
           <p>Please connect your wallet to approve USDT transactions.</p>
+          <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+            <details>
+              <summary>Debug Info</summary>
+              <p>WalletConnect Active: {isWalletConnectActive ? 'Yes' : 'No'}</p>
+              <p>TronWeb Active: {isTronWebActive ? 'Yes' : 'No'}</p>
+              <p>Address: {walletAddress || 'Not found'}</p>
+            </details>
+          </div>
         </div>
       </div>
     );
   }
 
-  const connectionType = walletConnectData.isConnected ? 'WalletConnect v2' : 'Native Wallet';
+  // Show a warning if connected but no address
+  if (isConnected && !walletAddress) {
+    return (
+      <div className="approve-usdt-container">
+        <div className="not-connected" style={{ backgroundColor: '#fff3cd', borderColor: '#ffeaa7' }}>
+          <h3>⚠️ Address Not Available</h3>
+          <p>Wallet is connected but address is not available. Please try reconnecting.</p>
+          <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+            <p><strong>Debug Info:</strong></p>
+            <p>WalletConnect Active: {isWalletConnectActive ? 'Yes' : 'No'}</p>
+            <p>TronWeb Active: {isTronWebActive ? 'Yes' : 'No'}</p>
+            <p>WalletConnect Address: {walletConnectData?.address || 'None'}</p>
+            <p>TronWeb Address: {tronWebData?.address || 'None'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const connectionType = isWalletConnectActive ? 'WalletConnect v2' : 'Native Wallet';
 
   return (
     <div className="approve-usdt-container">
@@ -252,6 +432,39 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
           <p><strong>Connection Type:</strong> {connectionType}</p>
           <p><strong>USDT Contract:</strong></p>
           <p className="contract-address">{USDT_CONTRACT_ADDRESSES[CURRENT_NETWORK]}</p>
+        </div>
+
+        {/* Wallet Recommendation Section */}
+        <div style={{ 
+          background: isWalletConnectActive ? '#fff3cd' : '#d4edda', 
+          padding: '12px', 
+          margin: '10px 0', 
+          borderRadius: '8px', 
+          border: `1px solid ${isWalletConnectActive ? '#ffeaa7' : '#c3e6cb'}`
+        }}>
+          {isWalletConnectActive ? (
+            <div>
+              <div style={{ color: '#856404', fontWeight: 'bold', marginBottom: '5px' }}>
+                ⚠️ WalletConnect Connection
+              </div>
+              <div style={{ color: '#856404', fontSize: '14px' }}>
+                <strong>Current:</strong> Using WalletConnect v2<br />
+                <strong>Note:</strong> Many wallets have limited Tron support via WalletConnect. If transaction signing fails, the app will automatically switch to native wallet method.<br />
+                <strong>Recommendation:</strong> For best Tron experience, consider using TronLink browser extension directly.
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ color: '#155724', fontWeight: 'bold', marginBottom: '5px' }}>
+                ✅ Native Tron Wallet
+              </div>
+              <div style={{ color: '#155724', fontSize: '14px' }}>
+                <strong>Current:</strong> Using native Tron wallet<br />
+                <strong>Status:</strong> Recommended connection method for Tron transactions<br />
+                <strong>Compatibility:</strong> Full support for all Tron features
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="debug-info" style={{background: '#f8f9fa', padding: '10px', margin: '10px 0', borderRadius: '5px', fontSize: '12px'}}>
@@ -309,6 +522,19 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
           </div>
         )}
 
+        {message && (
+          <div className="info-message" style={{
+            backgroundColor: '#e3f2fd',
+            border: '1px solid #bbdefb',
+            borderRadius: '8px',
+            padding: '12px',
+            margin: '10px 0',
+            color: '#1976d2'
+          }}>
+            <p>ℹ️ {message}</p>
+          </div>
+        )}
+
         {transactionHash && (
           <div className="success-message">
             <p>✅ Transaction successful!</p>
@@ -348,6 +574,21 @@ const ApproveUsdtHybrid = ({ walletAddress }) => {
             Check USDT Balance
           </button>
         </div>
+
+        {isWalletConnectActive && (
+          <div style={{ 
+            marginTop: '15px', 
+            padding: '12px', 
+            backgroundColor: '#e3f2fd', 
+            borderRadius: '8px', 
+            fontSize: '14px',
+            color: '#1976d2',
+            border: '1px solid #bbdefb'
+          }}>
+            💡 <strong>WalletConnect Note:</strong> Many wallets have limited Tron support via WalletConnect. 
+            If transaction signing fails, the app will automatically switch to native wallet method for better compatibility.
+          </div>
+        )}
 
         <div className="info-section">
           <h4>ℹ️ About USDT Approval</h4>

@@ -3,6 +3,7 @@ import WalletConnectV2 from './components/WalletConnectV2.jsx';
 import WalletConnect_Simple from './components/WalletConnect_Simple.jsx';
 import ApproveUsdtHybrid from './components/ApproveUsdtHybrid.jsx';
 import EnvironmentDebug from './components/EnvironmentDebug.jsx';
+import { WalletProvider, useWallet } from './contexts/WalletContext.jsx';
 import { CURRENT_NETWORK } from './config/constants.js';
 import './App.css';
 
@@ -11,12 +12,16 @@ if (import.meta.env.DEV) {
   import('./utils/testWalletConnect.js');
 }
 
-function App() {
-  const [connectedAddress, setConnectedAddress] = useState('');
+// Main App content component
+function AppContent() {
   const [connectionMethod, setConnectionMethod] = useState('walletconnect'); // 'walletconnect' or 'native'
+  
+  // Get wallet state from context
+  const { isConnected, address } = useWallet();
 
   const handleWalletConnect = (address) => {
-    setConnectedAddress(address);
+    // This is now handled by the context
+    console.log('Wallet connected:', address);
   };
 
   const switchConnectionMethod = () => {
@@ -37,7 +42,7 @@ function App() {
 
       <main className="App-main">
         <div className="container">
-          {!connectedAddress ? (
+          {!isConnected ? (
             <div className="connection-selector">
               <div className="connection-tabs">
                 <button 
@@ -85,7 +90,7 @@ function App() {
               </div>
             </div>
           ) : (
-            <ApproveUsdtHybrid walletAddress={connectedAddress} />
+            <ApproveUsdtHybrid />
           )}
         </div>
       </main>
@@ -96,6 +101,15 @@ function App() {
 
       <EnvironmentDebug />
     </div>
+  );
+}
+
+// Main App component with provider
+function App() {
+  return (
+    <WalletProvider>
+      <AppContent />
+    </WalletProvider>
   );
 }
 
