@@ -36,6 +36,23 @@ const QRCodeComponent = ({ data, size = 200 }) => {
       ctx.fillText('Use URL instead', size / 2, size / 2 + 10);
     }
   };
+    ctx.fillStyle = 'white';
+    ctx.fillRect(x + moduleSize, y + moduleSize, 5 * moduleSize, 5 * moduleSize);
+    
+    // Center black square
+    ctx.fillStyle = 'black';
+    ctx.fillRect(x + 2 * moduleSize, y + 2 * moduleSize, 3 * moduleSize, 3 * moduleSize);
+  };
+
+  const simpleHash = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+  };
 
   return (
     <div className="qr-code-container">

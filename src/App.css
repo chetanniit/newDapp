@@ -602,6 +602,144 @@
   color: #666;
 }
 
+/* Trust Wallet QR Code Styles */
+.trust-wallet-steps {
+  margin: 1rem 0;
+}
+
+.trust-wallet-steps .step {
+  background: rgba(78, 205, 196, 0.1);
+  border-left: 3px solid #4ecdc4;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 0;
+  border-radius: 5px;
+}
+
+.qr-tips {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.qr-tips h6 {
+  margin: 0 0 0.5rem 0;
+  color: #ffc107;
+}
+
+.qr-tips ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.qr-tips li {
+  margin: 0.3rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+/* Deep Link Buttons */
+.deep-links {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.deep-link-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  min-width: 150px;
+}
+
+.deep-link-button.trust-wallet {
+  background: linear-gradient(135deg, #3375bb, #2e5c8a);
+  color: white;
+}
+
+.deep-link-button.trust-wallet:hover {
+  background: linear-gradient(135deg, #2e5c8a, #1e3a52);
+  transform: translateY(-2px);
+}
+
+.deep-link-button.tronlink {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+}
+
+.deep-link-button.tronlink:hover {
+  background: linear-gradient(135deg, #ee5a24, #c44569);
+  transform: translateY(-2px);
+}
+
+/* URL Display */
+.url-display {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.url-display label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #4ecdc4;
+  font-weight: bold;
+}
+
+.url-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-family: monospace;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.copy-button {
+  background: #4ecdc4;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.copy-button:hover {
+  background: #45b7b8;
+  transform: translateY(-1px);
+}
+
+/* Responsive Design for Deep Links */
+@media (max-width: 768px) {
+  .deep-links {
+    flex-direction: column;
+  }
+  
+  .deep-link-button {
+    flex: none;
+    width: 100%;
+  }
+}
+
 /* Network Indicator */
 .network-indicator {
   margin-top: 1rem;

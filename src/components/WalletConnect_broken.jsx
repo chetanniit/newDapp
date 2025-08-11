@@ -153,18 +153,18 @@ const WalletConnect = ({ onConnect }) => {
           )}
         </div>
 
-        {/* Enhanced QR Code Section for Trust Wallet */}
+        {/* QR Code Section */}
         <div className="qr-section">
-          <h4>📱 Trust Wallet QR Connection</h4>
-          <p>Scan with Trust Wallet for instant connection:</p>
+          <h4>📱 Mobile Connection</h4>
+          <p>Scan this QR code with Trust Wallet or TronLink mobile app:</p>
           
           {qrCodeData && (
             <div className="qr-container">
               <QRCodeComponent 
                 data={qrCodeData} 
-                size={220}
+                size={200}
+                logo="/tron-logo.png"
               />
-              
               <div className="qr-instructions">
                 <h5>📋 Trust Wallet QR Instructions:</h5>
                 <div className="trust-wallet-steps">
@@ -237,6 +237,29 @@ const WalletConnect = ({ onConnect }) => {
                   </button>
                 </div>
               </div>
+                    className="copy-button"
+                  >
+                    📋 Copy URL
+                  </button>
+                </div>
+                
+                <div className="deep-links">
+                  <h5>📲 Direct App Links:</h5>
+                  <button 
+                    onClick={() => window.open(`https://link.trustwallet.com/open_url?coin_id=195&url=${encodeURIComponent(window.location.href)}`, '_blank')}
+                    className="deep-link-button trust"
+                  >
+                    🛡️ Open in Trust Wallet
+                  </button>
+                  
+                  <button 
+                    onClick={() => window.open(`tronlinkoutside://pull.activity?param=${encodeURIComponent(JSON.stringify({url: window.location.href}))}`, '_blank')}
+                    className="deep-link-button tronlink"
+                  >
+                    🔗 Open in TronLink
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -245,13 +268,12 @@ const WalletConnect = ({ onConnect }) => {
         <div className="troubleshooting">
           <h4>🔧 Troubleshooting</h4>
           <details>
-            <summary>QR code not working?</summary>
+            <summary>Connection not working?</summary>
             <ul>
-              <li><strong>Trust Wallet:</strong> Make sure you're using the scanner in the Browser tab</li>
-              <li><strong>Lighting:</strong> Ensure good lighting and steady hand</li>
-              <li><strong>Size:</strong> QR code should fill most of the scan area</li>
-              <li><strong>Alternative:</strong> Use the "Open in Trust Wallet" button above</li>
-              <li><strong>Manual:</strong> Copy the URL and paste it in Trust Wallet browser</li>
+              <li><strong>Trust Wallet:</strong> Make sure you're in the DApp browser tab</li>
+              <li><strong>Network:</strong> Check that you're on the Tron network</li>
+              <li><strong>Updates:</strong> Ensure your wallet app is up to date</li>
+              <li><strong>Refresh:</strong> Try refreshing the page or restarting the app</li>
             </ul>
           </details>
         </div>

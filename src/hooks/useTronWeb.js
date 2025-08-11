@@ -254,7 +254,18 @@ export const useTronWeb = () => {
 
   const generateQRCode = () => {
     const appUrl = window.location.href;
-    const qrData = `tronlink://open?url=${encodeURIComponent(appUrl)}`;
+    
+    // Create Trust Wallet-compatible deep link
+    // Trust Wallet can open URLs directly or through their deep link protocol
+    const trustWalletUrl = `https://link.trustwallet.com/open_url?coin_id=195&url=${encodeURIComponent(appUrl)}`;
+    
+    // For broader compatibility, we'll use the direct URL
+    // Trust Wallet's QR scanner can handle regular URLs
+    const qrData = appUrl;
+    
+    console.log('Generated QR code data:', qrData);
+    console.log('Trust Wallet deep link:', trustWalletUrl);
+    
     setQrCodeData(qrData);
   };
 
